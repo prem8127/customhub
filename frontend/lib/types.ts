@@ -95,6 +95,9 @@ export type CustomizationState = {
   previewDataUrl?: string;
   // Fabric.js canvas state
   fabricJson?: string;
+  size?: string;
+  productColor?: string;
+  preview?: string;
 };
 
 export type CartItem = {
