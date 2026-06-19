@@ -1,0 +1,37 @@
+# Environment secrets — NEVER commit these
+.env
+.env.local
+.env.production
+.env*.local
+
+# Build outputs
+.next/
+dist/
+out/
+
+# Database
+.pgdata/
+*.sqlite
+*.db
+
+# Dependencies
+node_modules/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+.pg.log
+
+# Uploads
+public/uploads/
+
+# Salesforce (not part of this project)
+.sfdx/

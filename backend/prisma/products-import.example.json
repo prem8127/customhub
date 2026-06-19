@@ -1,0 +1,23 @@
+[
+  {
+    "id": "tee-example-001",
+    "slug": "example-tee",
+    "name": "Example Tee",
+    "category": "T-shirts",
+    "price": 999,
+    "originalPrice": 1199,
+    "stock": 100,
+    "thumbnail": "/images/placeholders/t-shirts.svg",
+    "popularity": 80,
+    "rating": 4.5,
+    "badge": "New",
+    "summary": "Short one-line summary shown on product cards.",
+    "description": "Longer description shown on the product detail page.",
+    "turnaround": "Ships in 4-6 days",
+    "features": ["220 GSM cotton", "Relaxed fit"],
+    "materials": ["Combed cotton"],
+    "accent": "#0EA5E9",
+    "surface": "from-sky-200 via-sky-100 to-white",
+    "customizable": true
+  }
+]
