@@ -341,7 +341,7 @@ export function CustomizationStudio({ product }: { product: Product }) {
   function handleAddToCart() {
     const canvas = fabricRef.current;
     const preview = exportDesign();
-    const designJson = canvas ? JSON.stringify(canvas.toJSON(["_customId"])) : "";
+    const designJson = canvas ? JSON.stringify((canvas as any).toJSON(["_customId"])) : "";
     addItem(product, {
       message: designJson || "No design",
       textColor: activeColor,
