@@ -143,7 +143,7 @@ export function CustomizationStudio({ product }: { product: Product }) {
   const saveSnapshot = useCallback(() => {
     const canvas = fabricRef.current;
     if (!canvas) return;
-    const json = JSON.stringify(canvas.toJSON(["_customId"]));
+    const json = JSON.stringify((canvas as any).toJSON(["_customId"]));
     setHistory((prev) => {
       const trimmed = prev.slice(0, historyIndex + 1);
       return [...trimmed, json];
