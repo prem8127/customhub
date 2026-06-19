@@ -42,6 +42,7 @@ const mobileTools: Array<{ label: string; icon: LucideIcon }> = [
 // ── Types ─────────────────────────────────────────────────────────────────────
 type FabricCanvas = import("fabric").Canvas;
 type FabricObject = import("fabric").FabricObject;
+type AnyObj = any;
 
 interface LayerItem {
   id: string;
@@ -81,7 +82,7 @@ export function CustomizationStudio({ product }: { product: Product }) {
     if (!canvasRef.current) return;
     let destroyed = false;
 
-    import("fabric").then(({ Canvas, FabricText, Rect }) => {
+    import("fabric").then(({ Canvas, Rect }) => {
       if (destroyed || !canvasRef.current) return;
 
       const canvas = new Canvas(canvasRef.current, {
@@ -91,7 +92,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
         selection: true,
       });
 
-      // Printable area boundary
       const boundary = new Rect({
         left: 100,
         top: 60,
@@ -110,12 +110,9 @@ export function CustomizationStudio({ product }: { product: Product }) {
       fabricRef.current = canvas;
       setFabricLoaded(true);
 
-      // Track selection
       canvas.on("selection:created", syncSelection);
       canvas.on("selection:updated", syncSelection);
       canvas.on("selection:cleared", () => setSelectedId(null));
-
-      // Save history on object modifications
       canvas.on("object:modified", saveSnapshot);
 
       return () => {
@@ -133,7 +130,7 @@ export function CustomizationStudio({ product }: { product: Product }) {
   function syncSelection() {
     const canvas = fabricRef.current;
     if (!canvas) return;
-    const active = canvas.getActiveObject() as FabricObject & { _customId?: string };
+    const active = canvas.getActiveObject() as AnyObj;
     if (active?._customId) {
       setSelectedId(active._customId);
     }
@@ -143,7 +140,7 @@ export function CustomizationStudio({ product }: { product: Product }) {
   const saveSnapshot = useCallback(() => {
     const canvas = fabricRef.current;
     if (!canvas) return;
-    const json = JSON.stringify((canvas as any).toJSON(["_customId"]));
+    const json = JSON.stringify((canvas as AnyObj).toJSON(["_customId"]));
     setHistory((prev) => {
       const trimmed = prev.slice(0, historyIndex + 1);
       return [...trimmed, json];
@@ -176,12 +173,12 @@ export function CustomizationStudio({ product }: { product: Product }) {
     if (!canvas) return;
     const objs = canvas
       .getObjects()
-      .filter((o: FabricObject & { _customId?: string }) => o._customId)
-      .map((o: FabricObject & { _customId?: string; text?: string }) => ({
-        id: o._customId!,
+      .filter((o: AnyObj) => o._customId)
+      .map((o: AnyObj) => ({
+        id: o._customId as string,
         label: o.text ? String(o.text).slice(0, 18) : "Image",
         type: (o.text ? "text" : "image") as "text" | "image",
-        obj: o,
+        obj: o as FabricObject,
       }));
     setLayers(objs);
   }
@@ -198,12 +195,12 @@ export function CustomizationStudio({ product }: { product: Product }) {
       fontSize,
       fill: activeColor,
       fontWeight: "bold",
-      }) as unknown as FabricObject & { _customId: string };;
+    }) as AnyObj;
     text._customId = id;
     fabricRef.current.add(text);
     fabricRef.current.setActiveObject(text);
     fabricRef.current.renderAll();
-    const newLayer: LayerItem = { id, label: "Your text here", type: "text", obj: text };
+    const newLayer: LayerItem = { id, label: "Your text here", type: "text", obj: text as FabricObject };
     setLayers((prev) => [...prev, newLayer]);
     setSelectedId(id);
     saveSnapshot();
@@ -215,15 +212,15 @@ export function CustomizationStudio({ product }: { product: Product }) {
     if (!file || !fabricRef.current) return;
     const url = URL.createObjectURL(file);
     const { FabricImage } = await import("fabric");
-    const img = await FabricImage.fromURL(url);
+    const img = await FabricImage.fromURL(url) as AnyObj;
     const id = uid();
     const scale = Math.min(200 / (img.width ?? 200), 200 / (img.height ?? 200));
     img.set({ left: 160, top: 120, scaleX: scale, scaleY: scale });
-    (img as FabricObject & { _customId: string })._customId = id;
+    img._customId = id;
     fabricRef.current.add(img);
     fabricRef.current.setActiveObject(img);
     fabricRef.current.renderAll();
-    const newLayer: LayerItem = { id, label: file.name.slice(0, 18), type: "image", obj: img };
+    const newLayer: LayerItem = { id, label: file.name.slice(0, 18), type: "image", obj: img as FabricObject };
     setLayers((prev) => [...prev, newLayer]);
     setSelectedId(id);
     saveSnapshot();
@@ -234,9 +231,9 @@ export function CustomizationStudio({ product }: { product: Product }) {
   function deleteSelected() {
     const canvas = fabricRef.current;
     if (!canvas) return;
-    const active = canvas.getActiveObject();
+    const active = canvas.getActiveObject() as AnyObj;
     if (!active) return;
-    const id = (active as FabricObject & { _customId?: string })._customId;
+    const id = active._customId;
     canvas.remove(active);
     canvas.renderAll();
     if (id) setLayers((prev) => prev.filter((l) => l.id !== id));
@@ -270,8 +267,8 @@ export function CustomizationStudio({ product }: { product: Product }) {
     setActiveFont(font);
     const canvas = fabricRef.current;
     if (!canvas) return;
-    const obj = canvas.getActiveObject() as FabricObject & { set?: Function; fontFamily?: string };
-    if (obj?.set) {
+    const obj = canvas.getActiveObject() as AnyObj;
+    if (obj) {
       obj.set("fontFamily", font);
       canvas.renderAll();
       saveSnapshot();
@@ -282,7 +279,7 @@ export function CustomizationStudio({ product }: { product: Product }) {
     setActiveColor(color);
     const canvas = fabricRef.current;
     if (!canvas) return;
-    const obj = canvas.getActiveObject();
+    const obj = canvas.getActiveObject() as AnyObj;
     if (obj) {
       obj.set("fill", color);
       canvas.renderAll();
@@ -294,8 +291,8 @@ export function CustomizationStudio({ product }: { product: Product }) {
     setFontSize(size);
     const canvas = fabricRef.current;
     if (!canvas) return;
-    const obj = canvas.getActiveObject() as FabricObject & { set?: Function };
-    if (obj?.set) {
+    const obj = canvas.getActiveObject() as AnyObj;
+    if (obj) {
       obj.set("fontSize", size);
       canvas.renderAll();
       saveSnapshot();
@@ -305,8 +302,8 @@ export function CustomizationStudio({ product }: { product: Product }) {
   function toggleBold() {
     const canvas = fabricRef.current;
     if (!canvas) return;
-    const obj = canvas.getActiveObject() as FabricObject & { fontWeight?: string; set?: Function };
-    if (!obj?.set) return;
+    const obj = canvas.getActiveObject() as AnyObj;
+    if (!obj) return;
     obj.set("fontWeight", obj.fontWeight === "bold" ? "normal" : "bold");
     canvas.renderAll();
     saveSnapshot();
@@ -315,8 +312,8 @@ export function CustomizationStudio({ product }: { product: Product }) {
   function toggleItalic() {
     const canvas = fabricRef.current;
     if (!canvas) return;
-    const obj = canvas.getActiveObject() as FabricObject & { fontStyle?: string; set?: Function };
-    if (!obj?.set) return;
+    const obj = canvas.getActiveObject() as AnyObj;
+    if (!obj) return;
     obj.set("fontStyle", obj.fontStyle === "italic" ? "normal" : "italic");
     canvas.renderAll();
     saveSnapshot();
@@ -325,8 +322,8 @@ export function CustomizationStudio({ product }: { product: Product }) {
   function toggleUnderline() {
     const canvas = fabricRef.current;
     if (!canvas) return;
-    const obj = canvas.getActiveObject() as FabricObject & { underline?: boolean; set?: Function };
-    if (!obj?.set) return;
+    const obj = canvas.getActiveObject() as AnyObj;
+    if (!obj) return;
     obj.set("underline", !obj.underline);
     canvas.renderAll();
     saveSnapshot();
@@ -341,7 +338,7 @@ export function CustomizationStudio({ product }: { product: Product }) {
   function handleAddToCart() {
     const canvas = fabricRef.current;
     const preview = exportDesign();
-    const designJson = canvas ? JSON.stringify((canvas as any).toJSON(["_customId"])) : "";
+    const designJson = canvas ? JSON.stringify((canvas as AnyObj).toJSON(["_customId"])) : "";
     addItem(product, {
       message: designJson || "No design",
       textColor: activeColor,
@@ -358,7 +355,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
 
       {/* ── Left panel — tools ── */}
       <aside className="premium-panel-strong hidden rounded-[1.5rem] p-4 lg:block">
-        {/* Tab switcher */}
         <div className="grid grid-cols-2 overflow-hidden rounded-[1rem] border border-line bg-white/55 text-sm font-semibold text-brand">
           {(["Text", "Image"] as const).map((tab) => (
             <button
@@ -383,7 +379,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
             </button>
 
             <div className="mt-6 space-y-5">
-              {/* Font */}
               <label className="block">
                 <span className="text-sm font-semibold text-brand">Font</span>
                 <div className="premium-input mt-2 flex items-center justify-between rounded-xl px-4 py-2">
@@ -398,7 +393,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
                 </div>
               </label>
 
-              {/* Size */}
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-sm font-semibold text-brand">Size</span>
@@ -411,7 +405,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
                 />
               </div>
 
-              {/* Style buttons */}
               <div className="grid grid-cols-5 gap-2">
                 {[
                   { icon: Bold, action: toggleBold },
@@ -426,7 +419,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
                 ))}
               </div>
 
-              {/* Color swatches */}
               <div>
                 <span className="mb-2 block text-sm font-semibold text-brand">Text color</span>
                 <div className="flex flex-wrap gap-2">
@@ -439,7 +431,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
                       aria-label={`Color ${swatch}`}
                     />
                   ))}
-                  {/* Custom color picker */}
                   <label className="h-10 w-10 rounded-full border-2 border-dashed border-brand cursor-pointer grid place-items-center" title="Custom color">
                     <Palette className="h-4 w-4 text-brand" />
                     <input type="color" value={activeColor} onChange={(e) => applyColorToSelected(e.target.value)} className="sr-only" />
@@ -447,7 +438,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
                 </div>
               </div>
 
-              {/* Delete */}
               {selectedId && (
                 <button onClick={deleteSelected} className="flex w-full items-center justify-center gap-2 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100">
                   <Trash2 className="h-4 w-4" /> Delete selected
@@ -480,7 +470,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
         <div className="relative overflow-hidden rounded-[1.5rem] border border-line p-4 sm:p-6" style={{ backgroundColor: selectedProductColor }}>
           <div className="custom-grid absolute inset-0 opacity-50" />
           <div className="relative mx-auto flex min-h-[420px] max-w-[640px] flex-col items-center justify-center gap-4">
-            {/* Product image behind canvas */}
             <div className="relative w-full" style={{ height: 420 }}>
               <Image
                 src={theme.image}
@@ -490,7 +479,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
                 className="object-contain drop-shadow-[0_32px_46px_rgba(82,18,42,0.14)] pointer-events-none"
                 priority
               />
-              {/* Fabric canvas overlaid on top */}
               <canvas
                 ref={canvasRef}
                 className="absolute inset-0 w-full h-full"
@@ -505,7 +493,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
           </div>
         </div>
 
-        {/* Mobile tools strip */}
         <div className="mt-4 rounded-[1.45rem] border border-line bg-white/72 p-3 lg:hidden">
           <div className="grid grid-cols-4 gap-1 border-b border-line pb-2 text-sm font-semibold text-steel">
             {mobileTools.map(({ label, icon: Icon }) => (
@@ -545,7 +532,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
           <Settings className="h-5 w-5" />
         </div>
         <div className="space-y-5">
-          {/* Size selector */}
           <div>
             <p className="mb-3 text-sm font-semibold text-brand">Size</p>
             <div className="grid grid-cols-4 gap-2">
@@ -561,7 +547,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
             </div>
           </div>
 
-          {/* Product color */}
           <div>
             <p className="mb-3 text-sm font-semibold text-brand">Product color</p>
             <div className="flex gap-3">
@@ -576,7 +561,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
             </div>
           </div>
 
-          {/* Layers list */}
           <div>
             <p className="mb-2 text-sm font-semibold text-brand">Layers</p>
             <div className="rounded-[1.25rem] border border-line bg-white/62 overflow-hidden">
@@ -602,7 +586,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
             </div>
           </div>
 
-          {/* Price */}
           <div className="rounded-[1.25rem] border border-line bg-white/62 p-4">
             <div className="flex items-end justify-between">
               <span className="text-sm font-semibold text-steel">Price</span>
@@ -612,7 +595,6 @@ export function CustomizationStudio({ product }: { product: Product }) {
             </div>
           </div>
 
-          {/* Add to cart */}
           <button
             type="button"
             onClick={handleAddToCart}
