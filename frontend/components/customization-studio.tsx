@@ -198,7 +198,7 @@ export function CustomizationStudio({ product }: { product: Product }) {
       fontSize,
       fill: activeColor,
       fontWeight: "bold",
-    }) as FabricObject & { _customId: string };
+      }) as unknown as FabricObject & { _customId: string };;
     text._customId = id;
     fabricRef.current.add(text);
     fabricRef.current.setActiveObject(text);
